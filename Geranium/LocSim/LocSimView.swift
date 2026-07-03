@@ -2,8 +2,8 @@
 //  Created by son3ra1n.
 //  Enhanced version of Geranium.
 //  Developed by son3ra1n.
+//  Modified: 集成 hide-my-tab 全屏隐藏UI能力
 //
-
 import SwiftUI
 import CoreLocation
 import MapKit
@@ -41,120 +41,131 @@ struct LocSimView: View {
     @State private var timerRemaining: Int = 0
     @State private var timerActive: Bool = false
     @State private var simTimer: Timer? = nil
+    
+    // hide-my-tab 全屏隐藏功能
+    @State private var isFullScreenMode = false
+    
     var body: some View {
         LocSimMainView()
     }
+    
     @ViewBuilder
-        private func LocSimMainView() -> some View {
-            ZStack(alignment: .topTrailing) {
-                // MARK: - Main Map
-                CustomMapView(tappedCoordinate: $tappedCoordinate, moveToRegion: $mapRegion, routePolyline: routeSimulator.routePolyline, allRoutePolylines: routeSimulator.allRoutePolylines, selectedRouteIndex: routeSimulator.selectedRouteIndex, movingPosition: routeSimulator.currentPosition)
-                    .onAppear {
-                        CLLocationManager().requestAlwaysAuthorization()
+    private func LocSimMainView() -> some View {
+        ZStack(alignment: .topTrailing) {
+            // MARK: - Main Map
+            CustomMapView(tappedCoordinate: $tappedCoordinate, moveToRegion: $mapRegion, routePolyline: routeSimulator.routePolyline, allRoutePolylines: routeSimulator.allRoutePolylines, selectedRouteIndex: routeSimulator.selectedRouteIndex, movingPosition: routeSimulator.currentPosition)
+                .onAppear {
+                    CLLocationManager().requestAlwaysAuthorization()
+                }
+                .onChange(of: tappedCoordinate) { newCoord in
+                    guard let coord = newCoord else { return }
+                    let altitudeValue = Double(altitude) ?? 0.0
+                    startSimulation(at: coord.coordinate, altitude: altitudeValue)
+                }
+                .ignoresSafeArea(.all, edges: [.top, .leading, .trailing])
+                // 双击地图切换全屏模式
+                .onTapGesture(count: 2) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isFullScreenMode.toggle()
                     }
-                    .onChange(of: tappedCoordinate) { newCoord in
-                        guard let coord = newCoord else { return }
-                        let altitudeValue = Double(altitude) ?? 0.0
-                        startSimulation(at: coord.coordinate, altitude: altitudeValue)
-                    }
-                    .ignoresSafeArea(.all, edges: [.top, .leading, .trailing])
-                
-                // MARK: - Address Search Overlay (Top)
-                if showSearchBar {
-                    VStack(spacing: 0) {
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            TextField("Search address...", text: $searchText, onCommit: {
-                                searchAddress()
-                            })
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                            
-                            if isSearching {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            }
-                            
-                            if !searchText.isEmpty {
-                                Button(action: {
-                                    searchText = ""
-                                    searchResults = []
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            
+                }
+            
+            // MARK: - Address Search Overlay (Top)
+            if showSearchBar {
+                VStack(spacing: 0) {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.gray)
+                        TextField("Search address...", text: $searchText, onCommit: {
+                            searchAddress()
+                        })
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        
+                        if isSearching {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                        
+                        if !searchText.isEmpty {
                             Button(action: {
-                                withAnimation {
-                                    showSearchBar = false
-                                    searchText = ""
-                                    searchResults = []
-                                }
+                                searchText = ""
+                                searchResults = []
                             }) {
-                                Text("Cancel")
-                                    .font(.subheadline)
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
                             }
                         }
-                        .padding(10)
+                        
+                        Button(action: {
+                            withAnimation {
+                                showSearchBar = false
+                                searchText = ""
+                                searchResults = []
+                            }
+                        }) {
+                            Text("Cancel")
+                                .font(.subheadline)
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(UIColor.systemBackground))
+                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    )
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    
+                    // Search Results List
+                    if !searchResults.isEmpty {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(searchResults, id: \.self) { item in
+                                    Button(action: {
+                                        selectSearchResult(item)
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "mappin.circle.fill")
+                                                .foregroundColor(.red)
+                                                .font(.title3)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(item.name ?? "Unknown")
+                                                    .font(.subheadline)
+                                                    .fontWeight(.medium)
+                                                    .foregroundColor(.primary)
+                                                if let address = item.placemark.title {
+                                                    Text(address)
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                        .lineLimit(1)
+                                                }
+                                            }
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                    }
+                                    Divider()
+                                        .padding(.leading, 44)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 250)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(Color(UIColor.systemBackground))
-                                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                                .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
                         )
                         .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        
-                        // Search Results List
-                        if !searchResults.isEmpty {
-                            ScrollView {
-                                VStack(spacing: 0) {
-                                    ForEach(searchResults, id: \.self) { item in
-                                        Button(action: {
-                                            selectSearchResult(item)
-                                        }) {
-                                            HStack {
-                                                Image(systemName: "mappin.circle.fill")
-                                                    .foregroundColor(.red)
-                                                    .font(.title3)
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    Text(item.name ?? "Unknown")
-                                                        .font(.subheadline)
-                                                        .fontWeight(.medium)
-                                                        .foregroundColor(.primary)
-                                                    if let address = item.placemark.title {
-                                                        Text(address)
-                                                            .font(.caption)
-                                                            .foregroundColor(.secondary)
-                                                            .lineLimit(1)
-                                                    }
-                                                }
-                                                Spacer()
-                                            }
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                        }
-                                        Divider()
-                                            .padding(.leading, 44)
-                                    }
-                                }
-                            }
-                            .frame(maxHeight: 250)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(UIColor.systemBackground))
-                                    .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
-                            )
-                            .padding(.horizontal, 12)
-                            .padding(.top, 4)
-                        }
+                        .padding(.top, 4)
                     }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(1)
                 }
-
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(1)
+                .opacity(isFullScreenMode ? 0 : 1)
+            }
             
             // MARK: - Floating Quick Menu (Long Press + Drag)
             FloatingQuickMenu(
@@ -166,6 +177,7 @@ struct LocSimView: View {
             )
             .padding(.trailing, 16)
             .padding(.top, 60)
+            .opacity(isFullScreenMode ? 0 : 1)
             
             // MARK: - Joystick Overlay
             if joystickActive {
@@ -181,6 +193,7 @@ struct LocSimView: View {
                     currentCoordinate: $joystickCoordinate
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                .opacity(isFullScreenMode ? 0 : 1)
             }
             
             // MARK: - Timer Countdown
@@ -208,8 +221,10 @@ struct LocSimView: View {
                     .padding(.leading, 16)
                     .padding(.bottom, 20)
                 }
+                .opacity(isFullScreenMode ? 0 : 1)
             }
         }
+        .statusBar(hidden: isFullScreenMode)
         .sheet(isPresented: $bookmarkSheetToggle) {
             BookMarkSlider(lat: $lat, long: $long)
         }
@@ -290,17 +305,14 @@ struct LocSimView: View {
         let coordinate = item.placemark.coordinate
         let altitudeValue = Double(altitude) ?? 0.0
         
-        // Move the map to the selected location
         let region = MKCoordinateRegion(
             center: coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         )
         mapRegion = region
         
-        // Start simulation at the selected location
         startSimulation(at: coordinate, altitude: altitudeValue)
         
-        // Close search UI
         showSearchBar = false
         searchText = ""
         searchResults = []
@@ -395,8 +407,4 @@ struct LocSimView: View {
                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
             )
     }
-}
-
-#Preview {
-    LocSimView()
 }
