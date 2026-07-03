@@ -1,0 +1,42 @@
+name: Build Andromeda LocSim Only
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 配置 Xcode 环境
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: 编译无签名 IPA
+        run: |
+          xcodebuild -project Geranium.xcodeproj \
+            -scheme Geranium \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+          mkdir -p Payload
+          cp -R build/Release-iphoneos/Geranium.app Payload/
+          zip -r Andromeda-LocSim.ipa Payload
+          mv Andromeda-LocSim.ipa Andromeda-LocSim.tipa
+
+      - name: 上传安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: Andromeda-LocSim-安装包
+          path: Andromeda-LocSim.tipa
