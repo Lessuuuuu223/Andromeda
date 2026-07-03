@@ -1,7 +1,9 @@
-//  Andromeda LocSim
-//  Created by son3ra1n.
-//  Enhanced version of Geranium.
+//
+//  LocSimView.swift
+//  Andromeda
+//
 //  Developed by son3ra1n.
+//  完整汉化 + 集成 hide-my-tab 双击全屏隐藏功能
 //
 
 import SwiftUI
@@ -26,148 +28,204 @@ struct LocSimView: View {
     @State private var isSearching: Bool = false
     @State private var mapRegion: MKCoordinateRegion? = nil
     
-    // Joystick
+    // 摇杆功能
     @State private var joystickActive: Bool = false
     @State private var joystickCoordinate: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 41.0082, longitude: 28.9784)
     
-    // Favorites
+    // 收藏夹
     @State private var showFavorites: Bool = false
     
-    // App Profiles
+    // 应用独立配置
     @State private var showAppProfiles: Bool = false
     
-    // Timer
+    // 定时停止
     @State private var showTimerPicker: Bool = false
     @State private var timerRemaining: Int = 0
     @State private var timerActive: Bool = false
     @State private var simTimer: Timer? = nil
+    
+    // hide-my-tab 双击全屏隐藏功能
+    @State private var isFullScreenMode = false
+    
     var body: some View {
         LocSimMainView()
     }
+    
     @ViewBuilder
-        private func LocSimMainView() -> some View {
-            ZStack(alignment: .topTrailing) {
-                // MARK: - Main Map
-                CustomMapView(tappedCoordinate: $tappedCoordinate, moveToRegion: $mapRegion, routePolyline: routeSimulator.routePolyline, allRoutePolylines: routeSimulator.allRoutePolylines, selectedRouteIndex: routeSimulator.selectedRouteIndex, movingPosition: routeSimulator.currentPosition)
-                    .onAppear {
-                        CLLocationManager().requestAlwaysAuthorization()
+    private func LocSimMainView() -> some View {
+        ZStack(alignment: .topTrailing) {
+            // MARK: - 主地图视图
+            CustomMapView(tappedCoordinate: $tappedCoordinate, moveToRegion: $mapRegion, routePolyline: routeSimulator.routePolyline, allRoutePolylines: routeSimulator.allRoutePolylines, selectedRouteIndex: routeSimulator.selectedRouteIndex, movingPosition: routeSimulator.currentPosition)
+                .onAppear {
+                    CLLocationManager().requestAlwaysAuthorization()
+                }
+                .onChange(of: tappedCoordinate) { newCoord in
+                    guard let coord = newCoord else { return }
+                    let altitudeValue = Double(altitude) ?? 0.0
+                    startSimulation(at: coord.coordinate, altitude: altitudeValue)
+                }
+                .ignoresSafeArea(.all, edges: [.top, .leading, .trailing])
+                // 双击切换全屏隐藏
+                .onTapGesture(count: 2) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isFullScreenMode.toggle()
                     }
-                    .onChange(of: tappedCoordinate) { newCoord in
-                        guard let coord = newCoord else { return }
-                        let altitudeValue = Double(altitude) ?? 0.0
-                        startSimulation(at: coord.coordinate, altitude: altitudeValue)
-                    }
-                    .ignoresSafeArea(.all, edges: [.top, .leading, .trailing])
-                
-                // MARK: - Address Search Overlay (Top)
-                if showSearchBar {
-                    VStack(spacing: 0) {
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            TextField("Search address...", text: $searchText, onCommit: {
-                                searchAddress()
-                            })
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                            
-                            if isSearching {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            }
-                            
-                            if !searchText.isEmpty {
-                                Button(action: {
-                                    searchText = ""
-                                    searchResults = []
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            
+                }
+            
+            // MARK: - 顶部搜索栏
+            if showSearchBar {
+                VStack(spacing: 0) {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.gray)
+                        TextField("搜索地址...", text: $searchText, onCommit: {
+                            searchAddress()
+                        })
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        
+                        if isSearching {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                        
+                        if !searchText.isEmpty {
                             Button(action: {
-                                withAnimation {
-                                    showSearchBar = false
-                                    searchText = ""
-                                    searchResults = []
-                                }
+                                searchText = ""
+                                searchResults = []
                             }) {
-                                Text("Cancel")
-                                    .font(.subheadline)
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
                             }
                         }
-                        .padding(10)
+                        
+                        Button(action: {
+                            withAnimation {
+                                showSearchBar = false
+                                searchText = ""
+                                searchResults = []
+                            }
+                        }) {
+                            Text("取消")
+                                .font(.subheadline)
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(UIColor.systemBackground))
+                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    )
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    
+                    // 搜索结果列表
+                    if !searchResults.isEmpty {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(searchResults, id: \.self) { item in
+                                    Button(action: {
+                                        selectSearchResult(item)
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "mappin.circle.fill")
+                                                .foregroundColor(.red)
+                                                .font(.title3)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(item.name ?? "未知地点")
+                                                    .font(.subheadline)
+                                                    .fontWeight(.medium)
+                                                    .foregroundColor(.primary)
+                                                if let address = item.placemark.title {
+                                                    Text(address)
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                        .lineLimit(1)
+                                                }
+                                            }
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                    }
+                                    Divider()
+                                        .padding(.leading, 44)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 250)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(Color(UIColor.systemBackground))
-                                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                                .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
                         )
                         .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        
-                        // Search Results List
-                        if !searchResults.isEmpty {
-                            ScrollView {
-                                VStack(spacing: 0) {
-                                    ForEach(searchResults, id: \.self) { item in
-                                        Button(action: {
-                                            selectSearchResult(item)
-                                        }) {
-                                            HStack {
-                                                Image(systemName: "mappin.circle.fill")
-                                                    .foregroundColor(.red)
-                                                    .font(.title3)
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    Text(item.name ?? "Unknown")
-                                                        .font(.subheadline)
-                                                        .fontWeight(.medium)
-                                                        .foregroundColor(.primary)
-                                                    if let address = item.placemark.title {
-                                                        Text(address)
-                                                            .font(.caption)
-                                                            .foregroundColor(.secondary)
-                                                            .lineLimit(1)
-                                                    }
-                                                }
-                                                Spacer()
-                                            }
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                        }
-                                        Divider()
-                                            .padding(.leading, 44)
-                                    }
-                                }
-                            }
-                            .frame(maxHeight: 250)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(UIColor.systemBackground))
-                                    .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
-                            )
-                            .padding(.horizontal, 12)
-                            .padding(.top, 4)
+                        .padding(.top, 4)
+                    }
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(1)
+                .opacity(isFullScreenMode ? 0 : 1)
+            }
+            
+            // MARK: - 右侧功能按钮
+            VStack(spacing: 12) {
+                Button(action: { showSearchBar.toggle() }) {
+                    controlIcon(systemName: "magnifyingglass", color: .purple)
+                }
+                
+                Button(action: { showFavorites.toggle() }) {
+                    controlIcon(systemName: "star.fill", color: .orange)
+                }
+                
+                Button(action: { showAppProfiles.toggle() }) {
+                    controlIcon(systemName: "app.fill", color: .blue)
+                }
+                
+                Button(action: {
+                    withAnimation(.spring(response: 0.3)) {
+                        joystickActive.toggle()
+                        if joystickActive {
+                            joystickCoordinate = CLLocationCoordinate2D(latitude: lat, longitude: long)
                         }
                     }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(1)
+                }) {
+                    controlIcon(systemName: "gamecontroller.fill", color: .green)
                 }
-
-            
-            // MARK: - Floating Quick Menu (Long Press + Drag)
-            FloatingQuickMenu(
-                onAction: { action in
-                    handleQuickMenuAction(action)
-                },
-                joystickActive: joystickActive,
-                timerActive: timerActive
-            )
+                
+                Button(action: { showRouteSheet.toggle() }) {
+                    controlIcon(systemName: "car.fill", color: .blue)
+                }
+                
+                Button(action: {
+                    UIApplication.shared.TextFieldAlert(
+                        title: "设置海拔",
+                        message: "请输入海拔高度（单位：米）",
+                        textFieldPlaceHolder: "海拔高度"
+                    ) { altitudeText, _ in
+                        if let altText = altitudeText, !altText.isEmpty {
+                            self.altitude = altText
+                            AlertKitAPI.present(title: "海拔已设置", icon: .done, style: .iOS17AppleMusic, haptic: .success)
+                        }
+                    }
+                }) {
+                    controlIcon(systemName: "mountain.2.fill", color: .purple)
+                }
+                
+                Button(action: { showTimerPicker = true }) {
+                    controlIcon(systemName: "timer", color: .orange)
+                }
+                
+                Button(action: { stopSimulation() }) {
+                    controlIcon(systemName: "stop.fill", color: .red)
+                }
+            }
             .padding(.trailing, 16)
             .padding(.top, 60)
+            .opacity(isFullScreenMode ? 0 : 1)
             
-            // MARK: - Joystick Overlay
+            // MARK: - 摇杆悬浮面板
             if joystickActive {
                 JoystickView(
                     isActive: $joystickActive,
@@ -181,9 +239,10 @@ struct LocSimView: View {
                     currentCoordinate: $joystickCoordinate
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                .opacity(isFullScreenMode ? 0 : 1)
             }
             
-            // MARK: - Timer Countdown
+            // MARK: - 定时倒计时显示
             if timerActive {
                 VStack {
                     Spacer()
@@ -208,8 +267,10 @@ struct LocSimView: View {
                     .padding(.leading, 16)
                     .padding(.bottom, 20)
                 }
+                .opacity(isFullScreenMode ? 0 : 1)
             }
         }
+        .statusBar(hidden: isFullScreenMode)
         .sheet(isPresented: $bookmarkSheetToggle) {
             BookMarkSlider(lat: $lat, long: $long)
         }
@@ -226,12 +287,12 @@ struct LocSimView: View {
             }
         }
         .actionSheet(isPresented: $showTimerPicker) {
-            ActionSheet(title: Text("Auto-Stop Timer"), message: Text("LocSim will stop automatically after:"), buttons: [
-                .default(Text("15 minutes")) { startTimer(minutes: 15) },
-                .default(Text("30 minutes")) { startTimer(minutes: 30) },
-                .default(Text("1 hour")) { startTimer(minutes: 60) },
-                .default(Text("2 hours")) { startTimer(minutes: 120) },
-                .cancel()
+            ActionSheet(title: Text("自动停止计时"), message: Text("定位模拟将在设定时间后自动关闭"), buttons: [
+                .default(Text("15 分钟")) { startTimer(minutes: 15) },
+                .default(Text("30 分钟")) { startTimer(minutes: 30) },
+                .default(Text("1 小时")) { startTimer(minutes: 60) },
+                .default(Text("2 小时")) { startTimer(minutes: 120) },
+                .cancel(Text("取消"))
             ])
         }
         .sheet(isPresented: $showAppProfiles) {
@@ -251,20 +312,20 @@ struct LocSimView: View {
         self.lat = wgsCoordinate.latitude
         self.long = wgsCoordinate.longitude
         
-        let location = CLLocation(coordinate: wgsCoordinate, altitude: altitude,horizontalAccuracy:5,verticalAccuracy: 5,timestamp: Date())
+        let location = CLLocation(coordinate: wgsCoordinate, altitude: altitude, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date())
         LocSimManager.startLocSim(location: location)
         
         joystickCoordinate = wgsCoordinate
         
         AlertKitAPI.present(
-            title: "Started!",
+            title: "定位模拟已启动",
             icon: .done,
             style: .iOS17AppleMusic,
             haptic: .success
         )
     }
     
-    // MARK: - Address Search
+    // MARK: - 地址搜索
     private func searchAddress() {
         guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSearching = true
@@ -280,7 +341,7 @@ struct LocSimView: View {
                 if let response = response {
                     searchResults = response.mapItems
                 } else {
-                    UIApplication.shared.alert(body: "No results found for '\(searchText)'")
+                    UIApplication.shared.alert(body: "未找到 '\(searchText)' 相关结果")
                 }
             }
         }
@@ -290,23 +351,20 @@ struct LocSimView: View {
         let coordinate = item.placemark.coordinate
         let altitudeValue = Double(altitude) ?? 0.0
         
-        // Move the map to the selected location
         let region = MKCoordinateRegion(
             center: coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         )
         mapRegion = region
         
-        // Start simulation at the selected location
         startSimulation(at: coordinate, altitude: altitudeValue)
         
-        // Close search UI
         showSearchBar = false
         searchText = ""
         searchResults = []
     }
     
-    // MARK: - Timer
+    // MARK: - 定时功能
     private func startTimer(minutes: Int) {
         timerRemaining = minutes * 60
         timerActive = true
@@ -319,7 +377,7 @@ struct LocSimView: View {
                 cancelTimer()
             }
         }
-        AlertKitAPI.present(title: "Timer: \(minutes)m", icon: .done, style: .iOS17AppleMusic, haptic: .success)
+        AlertKitAPI.present(title: "计时已启动：\(minutes) 分钟", icon: .done, style: .iOS17AppleMusic, haptic: .success)
     }
     
     private func cancelTimer() {
@@ -337,50 +395,14 @@ struct LocSimView: View {
         return String(format: "%02d:%02d", m, s)
     }
     
-    // MARK: - Quick Menu Handler
-    private func handleQuickMenuAction(_ action: QuickMenuAction) {
-        switch action {
-        case .search:
-            showSearchBar.toggle()
-        case .favorites:
-            showFavorites.toggle()
-        case .appProfiles:
-            showAppProfiles.toggle()
-        case .joystick:
-            withAnimation(.spring(response: 0.3)) {
-                joystickActive.toggle()
-                if joystickActive {
-                    joystickCoordinate = CLLocationCoordinate2D(latitude: lat, longitude: long)
-                }
-            }
-        case .route:
-            showRouteSheet.toggle()
-        case .altitude:
-            UIApplication.shared.TextFieldAlert(
-                title: "Set Altitude",
-                message: "Enter the altitude in meters.",
-                textFieldPlaceHolder: "Altitude (m)"
-            ) { altitudeText, _ in
-                if let altText = altitudeText, !altText.isEmpty {
-                    self.altitude = altText
-                    AlertKitAPI.present(title: "Altitude Set!", icon: .done, style: .iOS17AppleMusic, haptic: .success)
-                }
-            }
-        case .timer:
-            showTimerPicker = true
-        case .stop:
-            stopSimulation()
-        }
-    }
-    
     private func stopSimulation() {
         LocSimManager.stopLocSim()
         joystickActive = false
         cancelTimer()
-        AlertKitAPI.present(title: "Stopped!", icon: .done, style: .iOS17AppleMusic, haptic: .success)
+        AlertKitAPI.present(title: "定位模拟已停止", icon: .done, style: .iOS17AppleMusic, haptic: .success)
     }
     
-    // MARK: - Modern UI Helpers
+    // MARK: - 按钮样式
     private func controlIcon(systemName: String, color: Color = .indigo) -> some View {
         Image(systemName: systemName)
             .font(.system(size: 18, weight: .bold))
@@ -395,8 +417,4 @@ struct LocSimView: View {
                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
             )
     }
-}
-
-#Preview {
-    LocSimView()
 }
