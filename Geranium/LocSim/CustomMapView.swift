@@ -100,7 +100,7 @@ struct CustomMapView: UIViewRepresentable {
             } else {
                 let annotation = MovingAnnotation()
                 annotation.coordinate = position
-                annotation.title = "Current Position"
+                annotation.title = "当前位置"
                 uiView.addAnnotation(annotation)
                 context.coordinator.movingAnnotation = annotation
             }

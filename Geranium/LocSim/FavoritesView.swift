@@ -37,10 +37,10 @@ struct FavoritesView: View {
                         Image(systemName: "star.slash")
                             .font(.system(size: 50))
                             .foregroundColor(.secondary.opacity(0.5))
-                        Text("No Favorites Yet")
+                        Text("还没有收藏")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.secondary)
-                        Text("Tap + to save your current location")
+                        Text("点右上角 + 保存当前位置")
                             .font(.caption)
                             .foregroundColor(.secondary.opacity(0.7))
                     }
@@ -90,11 +90,11 @@ struct FavoritesView: View {
                     .listStyle(.insetGrouped)
                 }
             }
-            .navigationTitle("Favorites")
+            .navigationTitle("收藏")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
+                    Button("关闭") {
                         isPresented = false
                     }
                 }
@@ -118,10 +118,10 @@ struct FavoritesView: View {
     private func addFavoriteSheet() -> some View {
         NavigationView {
             Form {
-                Section(header: Text("Location Name")) {
-                    TextField("e.g. Home, Work, Park...", text: $newName)
+                Section(header: Text("位置名称")) {
+                    TextField("例如：家、公司、公园...", text: $newName)
                 }
-                Section(header: Text("Current Location"), footer: Text("Your current simulated coordinates will be saved automatically.")) {
+                Section(header: Text("当前位置"), footer: Text("将自动保存你当前模拟的坐标。")) {
                     HStack {
                         Image(systemName: "mappin.circle.fill")
                             .foregroundColor(.indigo)
@@ -134,18 +134,18 @@ struct FavoritesView: View {
                     Button(action: saveFavorite) {
                         HStack {
                             Image(systemName: "star.fill")
-                            Text("Save Current Location")
+                            Text("保存当前位置")
                         }
                         .foregroundColor(.indigo)
                     }
                     .disabled(newName.isEmpty)
                 }
             }
-            .navigationTitle("Add Favorite")
+            .navigationTitle("添加收藏")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { showAddSheet = false }
+                    Button("取消") { showAddSheet = false }
                 }
             }
         }
@@ -156,7 +156,7 @@ struct FavoritesView: View {
         bookmarks = BookMarkRetrieve()
         newName = ""
         showAddSheet = false
-        AlertKitAPI.present(title: "Saved!", icon: .done, style: .iOS17AppleMusic, haptic: .success)
+        AlertKitAPI.present(title: "已保存！", icon: .done, style: .iOS17AppleMusic, haptic: .success)
     }
     
     private func deleteBookmark(at offsets: IndexSet) {

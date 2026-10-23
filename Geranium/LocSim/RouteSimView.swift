@@ -38,7 +38,7 @@ struct RouteSimSheet: View {
                     } else {
                         // MARK: - Start Point
                         locationCard(
-                            title: "Start Point",
+                            title: "起点",
                             icon: "play.circle.fill",
                             iconColor: .green,
                             text: $startText,
@@ -55,7 +55,7 @@ struct RouteSimSheet: View {
                         
                         // MARK: - End Point
                         locationCard(
-                            title: "Destination",
+                            title: "终点",
                             icon: "flag.checkered.circle.fill",
                             iconColor: .red,
                             text: $endText,
@@ -67,7 +67,7 @@ struct RouteSimSheet: View {
                         
                         // MARK: - Travel Mode
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Travel Mode")
+                            Text("出行方式")
                                 .font(.headline)
                                 .padding(.horizontal)
                             
@@ -106,7 +106,7 @@ struct RouteSimSheet: View {
                         // MARK: - Speed Multiplier
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text("Speed")
+                                Text("速度")
                                     .font(.headline)
                                 Spacer()
                                 Text("\(String(format: "%.1f", speedMultiplier))x (\(formattedSpeed))")
@@ -132,7 +132,7 @@ struct RouteSimSheet: View {
                                         } else {
                                             Image(systemName: "point.topleft.down.to.point.bottomright.curvepath.fill")
                                         }
-                                        Text(routeSimulator.isCalculatingRoute ? "Calculating..." : "Calculate Routes")
+                                        Text(routeSimulator.isCalculatingRoute ? "计算中..." : "计算路线")
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding()
@@ -153,10 +153,10 @@ struct RouteSimSheet: View {
                                 HStack {
                                     Image(systemName: "map.fill")
                                         .foregroundColor(.accentColor)
-                                    Text("Select Route")
+                                    Text("选择路线")
                                         .font(.headline)
                                     Spacer()
-                                    Text("\(routeSimulator.availableRoutes.count) route(s)")
+                                    Text("\(routeSimulator.availableRoutes.count) 条")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -170,7 +170,7 @@ struct RouteSimSheet: View {
                                 Button(action: startRoute) {
                                     HStack {
                                         Image(systemName: "play.fill")
-                                        Text("Start Route Simulation")
+                                        Text("开始路线模拟")
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding()
@@ -188,11 +188,11 @@ struct RouteSimSheet: View {
                 }
                 .padding(.vertical)
             }
-            .navigationTitle("Andromeda Navigation")
+            .navigationTitle("路线模拟")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
+                    Button("关闭") {
                         isPresented = false
                     }
                 }
@@ -221,7 +221,7 @@ struct RouteSimSheet: View {
             .sheet(isPresented: $showGPXPicker) {
                 GPXDocumentPicker { url in
                     guard let result = GPXParser.parse(url: url), !result.isEmpty else {
-                        UIApplication.shared.alert(body: "Failed to parse GPX file or file is empty.")
+                        UIApplication.shared.alert(body: "GPX 文件解析失败或文件为空")
                         return
                     }
                     
@@ -230,8 +230,8 @@ struct RouteSimSheet: View {
                         // Use first and last as start/end
                         startCoord = coords.first
                         endCoord = coords.last
-                        startText = "GPX Start"
-                        endText = "GPX End (\(coords.count) points)"
+                        startText = "GPX 起点"
+                        endText = "GPX 终点（\(coords.count) 个点）"
                         
                         // Fit map to route
                         let centerLat = coords.map { $0.latitude }.reduce(0, +) / Double(coords.count)
@@ -241,7 +241,7 @@ struct RouteSimSheet: View {
                             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                         )
                         
-                        AlertKitAPI.present(title: "GPX Loaded! \(coords.count) pts", icon: .done, style: .iOS17AppleMusic, haptic: .success)
+                        AlertKitAPI.present(title: "GPX 已加载！共 \(coords.count) 个点", icon: .done, style: .iOS17AppleMusic, haptic: .success)
                     }
                 }
             }
@@ -271,7 +271,7 @@ struct RouteSimSheet: View {
                             .font(.subheadline)
                             .fontWeight(.semibold)
                         if index == 0 {
-                            Text("FASTEST")
+                            Text("最快")
                                 .font(.system(size: 9, weight: .bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -301,7 +301,7 @@ struct RouteSimSheet: View {
                         HStack(spacing: 4) {
                             Image(systemName: "point.3.connected.trianglepath.dotted")
                                 .font(.caption2)
-                            Text("\(option.route.polyline.pointCount) pts")
+                            Text("\(option.route.polyline.pointCount) 个点")
                                 .font(.caption)
                         }
                         .foregroundColor(.secondary)
@@ -312,7 +312,7 @@ struct RouteSimSheet: View {
                         HStack(spacing: 4) {
                             Image(systemName: "speedometer")
                                 .font(.caption2)
-                            Text("At \(String(format: "%.1f", speedMultiplier))x: \(routeSimulator.estimatedTime)")
+                            Text("以 \(String(format: "%.1f", speedMultiplier))x 速度：约 \(routeSimulator.estimatedTime)")
                                 .font(.caption)
                                 .foregroundColor(.accentColor)
                         }
@@ -347,7 +347,7 @@ struct RouteSimSheet: View {
                 HStack {
                     Image(systemName: selectedMode.icon)
                         .foregroundColor(.accentColor)
-                    Text("Route in Progress")
+                    Text("路线模拟进行中")
                         .font(.headline)
                     Spacer()
                     Text("\(Int(routeSimulator.progress * 100))%")
@@ -360,11 +360,11 @@ struct RouteSimSheet: View {
                     .progressViewStyle(LinearProgressViewStyle(tint: .accentColor))
                 
                 HStack {
-                    Text("Point \(routeSimulator.currentPointIndex)/\(routeSimulator.totalPoints)")
+                    Text("进度点 \(routeSimulator.currentPointIndex)/\(routeSimulator.totalPoints)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text("ETA: \(routeSimulator.estimatedTime)")
+                    Text("预计剩余：\(routeSimulator.estimatedTime)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -382,7 +382,7 @@ struct RouteSimSheet: View {
                 }) {
                     HStack {
                         Image(systemName: routeSimulator.isPaused ? "play.fill" : "pause.fill")
-                        Text(routeSimulator.isPaused ? "Resume" : "Pause")
+                        Text(routeSimulator.isPaused ? "继续" : "暂停")
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -398,7 +398,7 @@ struct RouteSimSheet: View {
                     routeSimulator.stopSimulation()
                     routeReady = false
                     AlertKitAPI.present(
-                        title: "Route Stopped",
+                        title: "路线已停止",
                         icon: .done,
                         style: .iOS17AppleMusic,
                         haptic: .success
@@ -406,7 +406,7 @@ struct RouteSimSheet: View {
                 }) {
                     HStack {
                         Image(systemName: "stop.fill")
-                        Text("Stop")
+                        Text("停止")
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -461,7 +461,7 @@ struct RouteSimSheet: View {
             .padding(.horizontal)
             
             HStack {
-                TextField("Search address...", text: text, onCommit: {
+                TextField("搜索地址...", text: text, onCommit: {
                     searchLocation(query: text.wrappedValue, field: field)
                 })
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -575,11 +575,11 @@ struct RouteSimSheet: View {
         
         if field == .start {
             startCoord = coord
-            startText = item.name ?? "Selected"
+            startText = item.name ?? "已选择"
             startResults = []
         } else {
             endCoord = coord
-            endText = item.name ?? "Selected"
+            endText = item.name ?? "已选择"
             endResults = []
         }
         
@@ -595,7 +595,7 @@ struct RouteSimSheet: View {
                 routeReady = true
                 showRouteOnMap()
             } else {
-                UIApplication.shared.alert(body: error ?? "Failed to calculate route")
+                UIApplication.shared.alert(body: error ?? "路线计算失败")
             }
         }
     }
@@ -613,7 +613,7 @@ struct RouteSimSheet: View {
         routeSimulator.startSimulation(altitude: 0.0)
         
         AlertKitAPI.present(
-            title: "Route Started!",
+            title: "路线已开始！",
             icon: .done,
             style: .iOS17AppleMusic,
             haptic: .success

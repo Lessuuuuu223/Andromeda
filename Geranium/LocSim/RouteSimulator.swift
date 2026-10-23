@@ -11,9 +11,9 @@ import MapKit
 import UIKit
 
 enum TravelMode: String, CaseIterable {
-    case walking = "Walking"
-    case cycling = "Cycling"
-    case driving = "Driving"
+    case walking = "步行"
+    case cycling = "骑行"
+    case driving = "驾车"
     
     var speed: Double { // meters per second
         switch self {
@@ -46,8 +46,8 @@ class RouteOption: Identifiable, ObservableObject {
     let index: Int
     
     var name: String {
-        if index == 0 { return "Fastest Route" }
-        return "Alternative \(index)"
+        if index == 0 { return "最快路线" }
+        return "备选路线 \(index)"
     }
     
     var distanceText: String {
@@ -62,9 +62,9 @@ class RouteOption: Identifiable, ObservableObject {
         if minutes > 60 {
             let hours = minutes / 60
             let rem = minutes % 60
-            return "\(hours)h \(rem)m"
+            return "\(hours) 小时 \(rem) 分"
         }
-        return "\(minutes) min"
+        return "\(minutes) 分钟"
     }
     
     init(route: MKRoute, index: Int) {
@@ -125,11 +125,11 @@ class RouteSimulator: NSObject, ObservableObject, CLLocationManagerDelegate {
             DispatchQueue.main.async {
                 self?.isCalculatingRoute = false
                 if let error = error {
-                    completion(false, "Route error: \(error.localizedDescription)")
+                    completion(false, "路线错误：\(error.localizedDescription)")
                     return
                 }
                 guard let routes = response?.routes, !routes.isEmpty else {
-                    completion(false, "No route found")
+                    completion(false, "未找到路线")
                     return
                 }
                 self?.availableRoutes = routes.enumerated().map { RouteOption(route: $0.element, index: $0.offset) }
