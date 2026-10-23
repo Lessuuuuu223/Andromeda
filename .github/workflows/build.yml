@@ -1,0 +1,40 @@
+name: Build Andromeda tipa
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: 拉取代码(含子模块)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 编译(不签名)
+        run: |
+          xcodebuild -project Geranium.xcodeproj \
+            -scheme Geranium \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: 伪签名并打包tipa
+        run: |
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          codesign --force --deep --sign - --entitlements Geranium/Geranium.entitlements "$APP"
+          mkdir -p package/Payload
+          cp -R "$APP" package/Payload/
+          cd package && zip -r ../Andromeda_LocSimOnly.tipa Payload
+
+      - name: 上传安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: Andromeda_LocSimOnly
+          path: Andromeda_LocSimOnly.tipa
