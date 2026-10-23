@@ -8,14 +8,14 @@
 import SwiftUI
 
 enum QuickMenuAction: String, CaseIterable {
-    case search = "Search"
-    case favorites = "Favorites"
-    case appProfiles = "Apps"
-    case joystick = "Joystick"
-    case route = "Route"
-    case altitude = "Altitude"
-    case timer = "Timer"
-    case stop = "Stop"
+    case search = "搜索"
+    case favorites = "收藏"
+    case appProfiles = "应用"
+    case joystick = "摇杆"
+    case route = "路线"
+    case altitude = "海拔"
+    case timer = "计时"
+    case stop = "停止"
     
     var icon: String {
         switch self {
