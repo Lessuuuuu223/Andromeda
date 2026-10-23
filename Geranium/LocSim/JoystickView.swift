@@ -26,10 +26,10 @@ struct JoystickView: View {
         
         var label: String {
             switch self {
-            case .walk: return "Walk"
-            case .run: return "Run"
-            case .bike: return "Bike"
-            case .car: return "Car"
+case .walk: return "步行"
+case .run: return "跑步"
+case .bike: return "骑行"
+case .car: return "驾车"
             }
         }
         
