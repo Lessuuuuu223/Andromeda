@@ -161,7 +161,7 @@ struct JoystickView: View {
     private var dragAngle: Double {
         guard dragOffset != .zero else { return 0 }
         let angle = atan2(dragOffset.height, dragOffset.width)
-        return (angle * 180 / .pi) + 90
+        return Double(angle * 180 / .pi) + 90
     }
     
     private func startMoving() {
