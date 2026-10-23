@@ -65,7 +65,7 @@ struct LocSimView: View {
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundColor(.gray)
-                            TextField("Search address...", text: $searchText, onCommit: {
+                            TextField("搜索地址...", text: $searchText, onCommit: {
                                 searchAddress()
                             })
                             .textFieldStyle(PlainTextFieldStyle())
@@ -94,7 +94,7 @@ struct LocSimView: View {
                                     searchResults = []
                                 }
                             }) {
-                                Text("Cancel")
+                                Text("取消")
                                     .font(.subheadline)
                             }
                         }
@@ -226,11 +226,11 @@ struct LocSimView: View {
             }
         }
         .actionSheet(isPresented: $showTimerPicker) {
-            ActionSheet(title: Text("Auto-Stop Timer"), message: Text("LocSim will stop automatically after:"), buttons: [
-                .default(Text("15 minutes")) { startTimer(minutes: 15) },
-                .default(Text("30 minutes")) { startTimer(minutes: 30) },
-                .default(Text("1 hour")) { startTimer(minutes: 60) },
-                .default(Text("2 hours")) { startTimer(minutes: 120) },
+            ActionSheet(title: Text("自动停止"), message: Text("位置模拟将在以下时间后自动关闭："), buttons: [
+    .default(Text("15 分钟")) { startTimer(minutes: 15) },
+    .default(Text("30 分钟")) { startTimer(minutes: 30) },
+    .default(Text("1 小时")) { startTimer(minutes: 60) },
+    .default(Text("2 小时")) { startTimer(minutes: 120) },
                 .cancel()
             ])
         }
