@@ -57,7 +57,7 @@ struct LocSimView: View {
                         let altitudeValue = Double(altitude) ?? 0.0
                         startSimulation(at: coord.coordinate, altitude: altitudeValue)
                     }
-                    .ignoresSafeArea(.all, edges: [.top, .leading, .trailing])
+                    .ignoresSafeArea(.all)
                 
                 // MARK: - Address Search Overlay (Top)
                 if showSearchBar {
