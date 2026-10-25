@@ -216,9 +216,14 @@ struct DisclaimerView: View {
                     .bold()
                     .padding(.top, 12)
 
-                Text("该应用仅供内部群测试使用，严禁流传。\n如虚拟定位有问题，请联系你上级处理，其他问题一概不知！"by:冰美式)
+                (
+                    Text("该应用仅供内部群测试使用，严禁流传。\n如虚拟定位有问题，请联系你上级处理，其他问题一概不知！by:")
+                        .foregroundColor(.secondary)
+                    + Text("冰美式")
+                        .foregroundColor(.red)
+                        .bold()
+                )
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(5)
                     .fixedSize(horizontal: false, vertical: true)
