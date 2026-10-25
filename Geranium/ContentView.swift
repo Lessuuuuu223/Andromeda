@@ -129,9 +129,8 @@ struct ContentView: View {
     @State private var remoteDisabled = false
     @State private var networkFailed = false
     @State private var checked = false
-    @State private var disclaimerAccepted = false   // 每次启动都需重新确认
-    @State private var notice: KamiNotice? = nil     // 远程公告（为空则不弹）
-    @State private var noticeDismissed = false
+    @State private var notice: KamiNotice? = nil     // 远程启动弹窗（为空则跳过）
+    @State private var noticeAgreed = false          // 本次启动是否已点「已知」
 
     var body: some View {
         Group {
@@ -141,10 +140,8 @@ struct ContentView: View {
                 NetworkErrorView()
             } else if !checked {
                 VerifyingView()
-            } else if !disclaimerAccepted {
-                DisclaimerView(onAgree: { disclaimerAccepted = true })
-            } else if let n = notice, !noticeDismissed {
-                NoticeView(notice: n) { noticeDismissed = true }
+            } else if let n = notice, !noticeAgreed {
+                StartupNoticeView(notice: n) { noticeAgreed = true }
             } else if kamiActivated {
                 LocSimView()
             } else {
@@ -248,10 +245,28 @@ struct NetworkErrorView: View {
     }
 }
 
-// MARK: - 启动公告弹窗（每次启动弹出，已知=进入，取消=退出App）
-struct DisclaimerView: View {
+// MARK: - 启动弹窗（内容全部来自 Gitee 的 notice.txt，已知=进入，取消=退出App）
+struct StartupNoticeView: View {
+    let notice: KamiNotice
     var onAgree: () -> Void
     @State private var countdown: Int = 3   // 「已知」按钮倒计时，倒计时结束前不可点击
+
+    // 正文按行拆分；最后一行若以 by: 开头，则 by: 后面的署名以红色加粗显示
+    private var lines: [String] {
+        notice.body.components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private var signature: String? {
+        guard let last = lines.last, last.hasPrefix("by:") else { return nil }
+        let name = String(last.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : name
+    }
+
+    private var mainText: String {
+        signature == nil ? lines.joined(separator: "\n") : lines.dropLast().joined(separator: "\n")
+    }
 
     var body: some View {
         ZStack {
@@ -264,27 +279,40 @@ struct DisclaimerView: View {
                     .foregroundColor(.orange)
                     .padding(.top, 26)
 
-                Text("使用须知")
+                Text(notice.title)
                     .font(.title3)
                     .bold()
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 22)
                     .padding(.top, 12)
 
-                (
-                    Text("该应用仅供内部群测试使用，严禁流传。\n如虚拟定位有问题，请联系你上级处理，其他问题一概不知！by:")
-                        .foregroundColor(.secondary)
-                    + Text("冰美式")
-                        .foregroundColor(.red)
-                        .bold()
-                )
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(5)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 12)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(mainText)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineSpacing(6)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if let sig = signature {
+                            (
+                                Text("by:")
+                                    .foregroundColor(.secondary)
+                                + Text(sig)
+                                    .foregroundColor(.red)
+                                    .bold()
+                            )
+                            .font(.subheadline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 14)
+                }
+                .frame(maxHeight: 300)
 
                 Divider()
-                    .padding(.top, 22)
 
                 HStack(spacing: 0) {
                     Button(action: { exit(0) }) {
@@ -324,60 +352,6 @@ struct DisclaimerView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(i)) {
                 countdown = max(0, 3 - i)
             }
-        }
-    }
-}
-
-// MARK: - 远程公告弹窗（内容来自 Gitee 的 notice.txt）
-struct NoticeView: View {
-    let notice: KamiNotice
-    var onClose: () -> Void
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Image(systemName: "megaphone.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.indigo)
-                    .padding(.top, 26)
-
-                Text(notice.title)
-                    .font(.title3)
-                    .bold()
-                    .padding(.top, 12)
-
-                ScrollView {
-                    Text(notice.body)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.leading)
-                        .lineSpacing(6)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 12)
-                }
-                .frame(maxHeight: 260)
-
-                Divider()
-
-                Button(action: onClose) {
-                    Text("知道了")
-                        .font(.headline)
-                        .foregroundColor(.indigo)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .frame(height: 52)
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)
-            )
-            .padding(.horizontal, 44)
         }
     }
 }
