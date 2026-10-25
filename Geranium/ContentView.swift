@@ -251,6 +251,7 @@ struct NetworkErrorView: View {
 // MARK: - 启动公告弹窗（每次启动弹出，已知=进入，取消=退出App）
 struct DisclaimerView: View {
     var onAgree: () -> Void
+    @State private var countdown: Int = 3   // 「已知」按钮倒计时，倒计时结束前不可点击
 
     var body: some View {
         ZStack {
@@ -293,12 +294,17 @@ struct DisclaimerView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     Divider()
-                    Button(action: onAgree) {
-                        Text("已知")
+                    Button(action: {
+                        guard countdown == 0 else { return }
+                        onAgree()
+                    }) {
+                        Text(countdown > 0 ? "已知（\(countdown)）" : "已知")
                             .font(.headline)
+                            .bold()
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                    .disabled(countdown > 0)
                 }
                 .frame(height: 52)
             }
@@ -308,6 +314,16 @@ struct DisclaimerView: View {
                     .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)
             )
             .padding(.horizontal, 44)
+        }
+        .onAppear { startCountdown() }
+    }
+
+    // 3 秒倒计时：3 → 2 → 1 → 0，到 0 后「已知」才可点击
+    private func startCountdown() {
+        for i in 1...3 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i)) {
+                countdown = max(0, 3 - i)
+            }
         }
     }
 }
