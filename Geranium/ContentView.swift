@@ -10,8 +10,19 @@ import Foundation
 enum KamiConfig {
     // 远程卡密列表地址（Gitee 仓库里的 kami.txt 原始文件）
     static let remoteURL = "https://gitee.com/huang-xuxuxuxu/hide-my-tab-control/raw/master/kami.txt"
+    // 远程公告地址（Gitee 仓库里的 notice.txt 原始文件）
+    static let noticeURL = "https://gitee.com/huang-xuxuxuxu/hide-my-tab-control/raw/master/notice.txt"
     // 网络请求最长等待时间（秒）
     static let timeout: TimeInterval = 60
+    // 公告请求等待时间（秒），失败不影响启动
+    static let noticeTimeout: TimeInterval = 10
+}
+
+// 远程公告：开关 + 标题 + 正文
+struct KamiNotice {
+    var on: Bool = false
+    var title: String = ""
+    var body: String = ""
 }
 
 // 远程配置：总开关 + 卡密哈希表（值为到期截止时间，nil = 永久）
@@ -69,6 +80,40 @@ enum KamiAuth {
         return cfg
     }
 
+    // 拉取并解析远程 notice.txt
+    // 格式：第1行 ON=true/false；第2行 标题；其余行 正文
+    // 拉取失败 / 开关关闭 / 正文为空 → 返回 nil（不弹窗，也不影响启动）
+    static func fetchNotice() async -> KamiNotice? {
+        guard var comps = URLComponents(string: KamiConfig.noticeURL) else { return nil }
+        comps.queryItems = [URLQueryItem(name: "t", value: "\(Int(Date().timeIntervalSince1970))")]
+        guard let url = comps.url else { return nil }
+        var req = URLRequest(url: url)
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.timeoutInterval = KamiConfig.noticeTimeout
+
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200,
+              let rawText = String(data: data, encoding: .utf8) else { return nil }
+
+        let text = rawText.replacingOccurrences(of: "\u{FEFF}", with: "")
+        let lines = text.components(separatedBy: .newlines)
+        guard let head = lines.first?.trimmingCharacters(in: .whitespacesAndNewlines),
+              head.uppercased().hasPrefix("ON") else { return nil }
+
+        var notice = KamiNotice()
+        notice.on = head.uppercased().contains("TRUE")
+        guard notice.on else { return nil }
+
+        let rest = lines.dropFirst()
+        let title = rest.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        notice.title = title.isEmpty ? "公告" : title
+        notice.body = rest.dropFirst()
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        return notice.body.isEmpty ? nil : notice
+    }
+
     // 校验卡密：返回 nil 表示有效，否则为错误提示文案
     static func validate(code: String, in cfg: KamiRemoteConfig) -> String? {
         let h = sha256(code)
@@ -85,6 +130,8 @@ struct ContentView: View {
     @State private var networkFailed = false
     @State private var checked = false
     @State private var disclaimerAccepted = false   // 每次启动都需重新确认
+    @State private var notice: KamiNotice? = nil     // 远程公告（为空则不弹）
+    @State private var noticeDismissed = false
 
     var body: some View {
         Group {
@@ -96,6 +143,8 @@ struct ContentView: View {
                 VerifyingView()
             } else if !disclaimerAccepted {
                 DisclaimerView(onAgree: { disclaimerAccepted = true })
+            } else if let n = notice, !noticeDismissed {
+                NoticeView(notice: n) { noticeDismissed = true }
             } else if kamiActivated {
                 LocSimView()
             } else {
@@ -109,8 +158,10 @@ struct ContentView: View {
     // 成功：检查总开关 + 已激活卡密静默复查（卡被删/过期则踢回激活页）
     // 失败：提示检查网络并退出App
     private func startupCheck() async {
+        async let noticeTask = KamiAuth.fetchNotice()
         do {
             let cfg = try await KamiAuth.fetchConfig()
+            let fetchedNotice = await noticeTask
             await MainActor.run {
                 if !cfg.switchOn {
                     remoteDisabled = true
@@ -119,6 +170,7 @@ struct ContentView: View {
                 if kamiActivated, KamiAuth.validate(code: kamiCode, in: cfg) != nil {
                     kamiActivated = false
                 }
+                notice = fetchedNotice
                 checked = true
             }
         } catch {
@@ -247,6 +299,60 @@ struct DisclaimerView: View {
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                }
+                .frame(height: 52)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)
+            )
+            .padding(.horizontal, 44)
+        }
+    }
+}
+
+// MARK: - 远程公告弹窗（内容来自 Gitee 的 notice.txt）
+struct NoticeView: View {
+    let notice: KamiNotice
+    var onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Image(systemName: "megaphone.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.indigo)
+                    .padding(.top, 26)
+
+                Text(notice.title)
+                    .font(.title3)
+                    .bold()
+                    .padding(.top, 12)
+
+                ScrollView {
+                    Text(notice.body)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .lineSpacing(6)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 12)
+                }
+                .frame(maxHeight: 260)
+
+                Divider()
+
+                Button(action: onClose) {
+                    Text("知道了")
+                        .font(.headline)
+                        .foregroundColor(.indigo)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(height: 52)
             }
