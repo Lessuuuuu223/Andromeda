@@ -274,76 +274,107 @@ struct StartupNoticeView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.orange)
-                    .padding(.top, 26)
-
-                Text(notice.title)
-                    .font(.title3)
-                    .bold()
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 22)
-                    .padding(.top, 12)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(mainText)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .lineSpacing(6)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if let sig = signature {
-                            (
-                                Text("by:")
-                                    .foregroundColor(.secondary)
-                                + Text(sig)
-                                    .foregroundColor(.red)
-                                    .bold()
-                            )
-                            .font(.subheadline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 14)
+                // 顶部警示徽标（浅橙圆形底 + 图标）
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.12))
+                        .frame(width: 62, height: 62)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundColor(.orange)
                 }
-                .frame(maxHeight: 300)
+                .padding(.top, 28)
+
+                // 标题
+                Text(notice.title)
+                    .font(.system(size: 19, weight: .semibold))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 14)
+
+                // 正文 + 署名
+                content
+                    .padding(.horizontal, 26)
+                    .padding(.top, 14)
+                    .padding(.bottom, 26)
 
                 Divider()
+                    .opacity(0.6)
 
-                HStack(spacing: 0) {
+                // 底部按钮（等宽胶囊按钮）
+                HStack(spacing: 12) {
                     Button(action: { exit(0) }) {
                         Text("取消")
-                            .font(.headline)
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(
+                                RoundedRectangle(cornerRadius: 13)
+                                    .fill(Color(.secondarySystemBackground))
+                            )
                     }
-                    Divider()
+
                     Button(action: {
                         guard countdown == 0 else { return }
                         onAgree()
                     }) {
                         Text(countdown > 0 ? "已知（\(countdown)）" : "已知")
-                            .font(.headline)
-                            .bold()
-                            .foregroundColor(.red)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(countdown > 0 ? Color.gray : .red)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(
+                                RoundedRectangle(cornerRadius: 13)
+                                    .fill(countdown > 0 ? Color(.systemGray5) : Color.red.opacity(0.12))
+                            )
                     }
                     .disabled(countdown > 0)
                 }
-                .frame(height: 52)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
             }
             .background(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: 24)
                     .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)
+                    .shadow(color: .black.opacity(0.18), radius: 24, x: 0, y: 12)
             )
-            .padding(.horizontal, 44)
+            .padding(.horizontal, 32)
         }
         .onAppear { startCountdown() }
+    }
+
+    // 正文 + 署名；正文超过 10 行时改为可滚动，避免把弹窗撑满屏幕
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if lines.count > 10 {
+                ScrollView { mainBody }
+                    .frame(maxHeight: 300)
+            } else {
+                mainBody
+            }
+
+            if let sig = signature {
+                (
+                    Text("by:")
+                        .foregroundColor(Color(.tertiaryLabel))
+                    + Text(sig)
+                        .foregroundColor(.red)
+                        .bold()
+                )
+                .font(.system(size: 13, weight: .semibold))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+    }
+
+    private var mainBody: some View {
+        Text(mainText)
+            .font(.system(size: 14.5))
+            .foregroundColor(Color(.secondaryLabel))
+            .lineSpacing(7)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // 3 秒倒计时：3 → 2 → 1 → 0，到 0 后「已知」才可点击
